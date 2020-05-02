@@ -54,7 +54,7 @@ class IterSolver(Solver):
                  time_solver: TimeSolver,
                  d: float = 1,
                  L: float = 1,
-                 dt: float = 0.01,  # Zeitschritt
+                 dt: float = 0.1,  # Zeitschritt
                  ny: int = 19 + 1,  # Große der Diskretisieren-Gitter für y-Achse
                  V0: float = 0.1,  # Eingang-Strom-Geschwindigkeit
                  end_time = 50
@@ -174,24 +174,64 @@ if __name__ == "__main__":
 
     start = time.time()
     solver = IterSolver(RukuTimeSolver(), ny=21, L=1, d=1)
-    for t, psi, vx, vy in solver:
+    # for t, psi, vx, vy in solver:
+    #
+    #     if np.isclose(t, 1):
+    #         print(time.time() - start)
+    #         solver.plot_speed_feld()
+    #
+    #     if np.isclose(t, 10):
+    #         print(time.time() - start)
+    #         solver.plot_speed_feld()
+    #
+    #     if np.isclose(t, 20):
+    #         print(time.time() - start)
+    #         solver.plot_speed_feld()
+    #
+    #     if np.isclose(t, 30):
+    #         print(time.time() - start)
+    #         solver.plot_speed_feld()
+    #         break
 
-        if np.isclose(t, 1):
-            print(time.time() - start)
-            solver.plot_speed_feld()
 
-        if np.isclose(t, 10):
-            print(time.time() - start)
-            solver.plot_speed_feld()
+    iterator = solver.__iter__()
 
-        if np.isclose(t, 20):
-            print(time.time() - start)
-            solver.plot_speed_feld()
+    # Video sichern
+    k = 1.5
+    plt.rcParams["figure.figsize"] = (k * 6, k * 4)
+    fig = plt.figure()
+    ax = plt.axes(xlim=(-1.5, 1.5), ylim=(-1.5, 1.5))
+    plt.xlabel(r'$x$')
+    plt.ylabel(r'$y$')
+    # plt.grid()
+    time_text = ax.text(0.01, 0.01, '', transform=ax.transAxes)
+    line1, = ax.plot([], [], 'o', label=r'$m_1$')
+    line2, = ax.plot([], [], 'o', color='red', label=r'$m_2$')
+    plt.legend()
 
-        if np.isclose(t, 30):
-            print(time.time() - start)
-            solver.plot_speed_feld()
-            break
 
-        # if abs(round(t)-t) < 0.0001:
-        #     solver.plot_speed_feld()
+    # initialization function: plot the background of each frame
+    def init():
+        time_text.set_text('')
+        line1.set_data([], [])
+        line2.set_data([], [])
+        return line1, line2, time_text
+
+
+    # animation function.  This is called sequentially
+    def animate(i):
+        time_text.set_text('Zeit = %.1f s' % t_array[i])
+
+        line1.set_data(x1_array[i][0], x1_array[i][1])
+        line2.set_data(x2_array[i][0], x2_array[i][1])
+        if i % 10 == 0:
+            print(i, len(x2_array))
+        return line1, line2, time_text
+
+
+    # call the animator.  blit=True means only re-draw the parts that have changed.
+    anim = animation.FuncAnimation(fig, animate, init_func=init,
+                                   frames=len(x2_array), interval=1000 / fps, blit=True)
+
+    plt.show()
+    # anim.save('animation.mp4', fps=fps, dpi=300, extra_args=['-vcodec', 'libx264'])

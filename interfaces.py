@@ -19,6 +19,9 @@ class TimeSolver:
 
 
 class Solver:
+    h: float
+    L: float
+    d: float
 
     def __init__(self, time_solver: TimeSolver):
         self.time_solver = time_solver
