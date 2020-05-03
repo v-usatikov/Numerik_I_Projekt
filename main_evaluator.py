@@ -76,7 +76,7 @@ class Evaluator:
             t, psi, vx, vy = next(self._iterator)
             ax.collections = []
             # levels = MaxNLocator(nbins=50).tick_values(psi.min(), psi.max())
-            # cbar.set_clim(vmin=psi.min(), vmax=psi.max())
+            # cont.mappable.set_clim(psi.min(), psi.max())
             # cbar.draw_all()
             cont = plt.contourf(X, Y, psi, levels = levels)
             time_text.set_text('Zeit = %.1f s' % t)
@@ -101,18 +101,20 @@ class Evaluator:
         cont = plt.contourf(X, Y, self.solver.omega, levels = levels)
         cbar = plt.colorbar()
 
+        min_max_text = ax.text(0.51, 0.01, '', transform=ax.transAxes)
         time_text = ax.text(0.01, 0.01, '', transform=ax.transAxes)
 
         # animation function
         def animate(i, cont):
             t, psi, vx, vy = next(self._iterator)
             ax.collections = []
-            # levels = MaxNLocator(nbins=50).tick_values(psi.min(), psi.max())
-            # cbar.set_clim(vmin=psi.min(), vmax=psi.max())
-            # cbar.draw_all()
+            levels = MaxNLocator(nbins=50).tick_values(self.solver.omega.min(), self.solver.omega.max())
+
+            # cbar.ScalarMappable.set_clim((self.solver.omega.min(), self.solver.omega.max()))
             cont = plt.contourf(X, Y, self.solver.omega, levels = levels)
             time_text.set_text('Zeit = %.1f s' % t)
-            return cont, time_text
+            min_max_text.set_text('Min = %.1f, Max = %.1f' % (self.solver.omega.min(), self.solver.omega.max()))
+            return cont, time_text, min_max_text
 
         anim = animation.FuncAnimation(fig, animate, fargs=(cont, ), repeat=False)
         # anim.save('animation.mp4', writer=animation.FFMpegWriter())
@@ -126,7 +128,7 @@ if __name__ == "__main__":
     solver = IterSolver(RukuTimeSolver(), ny=21, L=1, d=1, V_in=0)
     solver.set_omega0_VB()
     evaluator = Evaluator(solver)
-    evaluator.omega_feld_animation()
+    evaluator.psi_feld_animation()
 
     solver = IterSolver(RukuTimeSolver(), ny=21, L=1, d=1, V_in=0)
     solver.set_omega0_VB()
