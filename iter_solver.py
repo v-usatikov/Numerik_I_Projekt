@@ -90,7 +90,7 @@ class IterSolver(Solver):
         self._step_bottom_index = int(self.st_d / self.h)
         self._step_side_index = int(self.st_L / self.h)
 
-        self.omega = np.zeros((self.ny, self.nx))
+        self.omega = np.ones((self.ny, self.nx))
         self.psi = np.zeros((self.ny, self.nx))
         self.vx = np.zeros((self.ny, self.nx))
         self.vy = np.zeros((self.ny, self.nx))
@@ -232,7 +232,8 @@ if __name__ == "__main__":
     #         solver.plot_speed_feld()
     #         break
 
-    solver = IterSolver(RukuTimeSolver(), ny=21, L=2, d=1, V_in=100000000, st_d=0.5, st_L=0.25, dt=0.1, nue = 1)
+    solver = IterSolver(RukuTimeSolver(), ny=41, L=2, d=1, V_in=100, st_d=0.5, st_L=0.25, dt=0.01, nue = 0.1)
+    solver.set_omega0_VB()
     evaluator = Evaluator(solver)
     # evaluator.v_feld_animation()
     evaluator.psi_feld_animation()

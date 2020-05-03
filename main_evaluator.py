@@ -91,7 +91,7 @@ class Evaluator:
 if __name__ == "__main__":
     from iter_solver import IterSolver, RukuTimeSolver
 
-    solver = IterSolver(RukuTimeSolver(), ny=21, L=1, d=1, V_in=0, nue=0.1)
+    solver = IterSolver(RukuTimeSolver(), ny=21, L=1, d=1, V_in=1, nue=0.1)
     solver.set_omega0_VB()
     evaluator = Evaluator(solver)
     # evaluator.v_feld_animation()
