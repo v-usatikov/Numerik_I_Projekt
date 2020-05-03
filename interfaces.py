@@ -22,6 +22,7 @@ class Solver:
     h: float  # Gitter Schritt
     L: float  # Lange
     d: float  # Breite
+    omega: np.ndarray
 
     def __init__(self, time_solver: TimeSolver):
         self.time_solver = time_solver

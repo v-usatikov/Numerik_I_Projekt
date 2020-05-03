@@ -87,9 +87,46 @@ class Evaluator:
 
         plt.show()
 
+    def omega_feld_animation(self):
+        self.restart()
+        t, psi, vx, vy = next(self._iterator)
+
+        X = np.arange(0, self.solver.L + self.solver.h, self.solver.h)
+        Y = np.arange(0, self.solver.d + self.solver.h, self.solver.h)
+
+        fig = plt.figure()
+        ax = plt.axes(xlabel='x', ylabel='y')
+
+        levels = MaxNLocator(nbins=50).tick_values(self.solver.omega.min(), self.solver.omega.max())
+        cont = plt.contourf(X, Y, self.solver.omega, levels = levels)
+        cbar = plt.colorbar()
+
+        time_text = ax.text(0.01, 0.01, '', transform=ax.transAxes)
+
+        # animation function
+        def animate(i, cont):
+            t, psi, vx, vy = next(self._iterator)
+            ax.collections = []
+            # levels = MaxNLocator(nbins=50).tick_values(psi.min(), psi.max())
+            # cbar.set_clim(vmin=psi.min(), vmax=psi.max())
+            # cbar.draw_all()
+            cont = plt.contourf(X, Y, self.solver.omega, levels = levels)
+            time_text.set_text('Zeit = %.1f s' % t)
+            return cont, time_text
+
+        anim = animation.FuncAnimation(fig, animate, fargs=(cont, ), repeat=False)
+        # anim.save('animation.mp4', writer=animation.FFMpegWriter())
+
+        plt.show()
+
 
 if __name__ == "__main__":
     from iter_solver import IterSolver, RukuTimeSolver
+
+    solver = IterSolver(RukuTimeSolver(), ny=21, L=1, d=1, V_in=0)
+    solver.set_omega0_VB()
+    evaluator = Evaluator(solver)
+    evaluator.omega_feld_animation()
 
     solver = IterSolver(RukuTimeSolver(), ny=21, L=1, d=1, V_in=0)
     solver.set_omega0_VB()
