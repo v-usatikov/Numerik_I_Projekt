@@ -46,7 +46,15 @@ class RukuTimeSolver(TimeSolver):
         f = np.zeros(omega.shape)
 
         f[1:-1, 1:-1] = -(self.vx*(omega[1:-1, 2:] - omega[1:-1, :-2]) / (2 * self.h) +
-                          self.vy*(omega[2:, 1:-1] - omega[:-2, 1:-1]) / (2 * self.h))
+                          self.vy*(omega[2:, 1:-1] - omega[:-2, 1:-1]) / (2 * self.h)) + \
+                        self.nue*(-4*omega[1:-1, 1:-1] + omega[1:-1, 2:] + omega[1:-1, :-2] + omega[2:, 1:-1] + omega[:-2, 1:-1])
+
+        f[:, 0] = f[:, 1]
+        f[:, -1] = f[:, -2]
+
+        f[0, :] = f[1, :]
+        f[-1, :] = f[-2, :]
+
         return f
 
 
@@ -60,6 +68,7 @@ class IterSolver(Solver):
                  st_L: float = 0,
                  st_d: float = 0,
                  V_in: float = 0,  # Eingang-Strom-Geschwindigkeit
+                 nue: float = 0,
                  end_time: float = 50
                  ):
         super().__init__(time_solver)
@@ -76,6 +85,7 @@ class IterSolver(Solver):
         self.st_d = st_d
         self.V_in = V_in
         self.V_out = V_in*(self.d - self.st_d)/self.d
+        self.nue = nue
 
         self._step_bottom_index = int(self.st_d / self.h)
         self._step_side_index = int(self.st_L / self.h)
@@ -88,7 +98,7 @@ class IterSolver(Solver):
         self.t = 0
         self.end_time = end_time
 
-        self.time_solver.init(self.omega, self.dt, self.h)
+        self.time_solver.init(self.omega, self.dt, self.h, self.nue)
 
     def set_omega0_VB(self):
         omega = np.zeros((self.ny, self.nx))
@@ -98,7 +108,7 @@ class IterSolver(Solver):
                 y = self.h * j
                 omega[j, i] = 1*sin(pi * x) * sin(pi * y) * 6 * exp(-50 * ((x - 0.30) ** 2 + (y - 0.30) ** 2))
         self.omega = omega
-        self.time_solver.init(self.omega, self.dt, self.h)
+        self.time_solver.init(self.omega, self.dt, self.h, self.nue)
 
     def solve_poisson_iter(self):
         psi = np.zeros((self.ny, self.nx))
@@ -222,7 +232,7 @@ if __name__ == "__main__":
     #         solver.plot_speed_feld()
     #         break
 
-    solver = IterSolver(RukuTimeSolver(), ny=21, L=2, d=1, V_in=100000000, st_d=0.5, st_L=0.25, dt=0.1)
+    solver = IterSolver(RukuTimeSolver(), ny=21, L=2, d=1, V_in=100000000, st_d=0.5, st_L=0.25, dt=0.1, nue = 1)
     evaluator = Evaluator(solver)
     # evaluator.v_feld_animation()
     evaluator.psi_feld_animation()

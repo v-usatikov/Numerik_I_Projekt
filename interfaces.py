@@ -6,16 +6,18 @@ class TimeSolver:
     t: float
     dt: float
     h: float
+    nue: float
 
     def time_step(self, vx: np.ndarray, vy: np.ndarray) -> np.ndarray:
         """Gibt das neue Omega-Feld für den nächsten Zeitschritt zurück."""
         raise NotImplementedError
 
-    def init(self, omega: np.ndarray, dt: float, h: float):
+    def init(self, omega: np.ndarray, dt: float, h: float, nue: float = 0):
         self.omega = omega
         self.dt = dt
         self.h = h
         self.t = 0
+        self.nue = nue
 
 
 class Solver:
