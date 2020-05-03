@@ -1,9 +1,10 @@
+from matplotlib.cm import ScalarMappable
+
 from interfaces import Solver
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-
-from iter_solver import IterSolver, RukuTimeSolver
+from matplotlib.ticker import MaxNLocator
 
 
 class Evaluator:
@@ -23,9 +24,15 @@ class Evaluator:
 
         X, Y = np.meshgrid(x, y)
 
-        fig, ax = plt.subplots(1, 1)
-        Q = ax.quiver(X, Y, vx, vy, pivot='mid', color='black', units='inches')
-        time_text = ax.text(0.01, 0.01, '', transform=ax.transAxes)
+        fig, axes = plt.subplots(1, 1)
+        # Q = axes.quiver(X, Y, vx, vy, pivot='mid', color='black', units='inches')
+        Q = axes.quiver(X, Y, vx, vy, color='black', units='inches')
+        time_text = axes.text(0.01, 0.01, '', transform=axes.transAxes)
+
+        # X = np.arange(0, self.solver.L + self.solver.h, self.solver.h)
+        # Y = np.arange(0, self.solver.d + self.solver.h, self.solver.h)
+        # levels = MaxNLocator(nbins=30).tick_values(psi.min(), psi.max())
+        # Q2 = axes[0].contourf(X, Y, psi, levels = levels)
 
         # ax.set_xlim(-1, 7)
         # ax.set_ylim(-1, 7)
@@ -43,14 +50,49 @@ class Evaluator:
 
         # you need to set blit=False, or the first set of arrows never gets
         # cleared on subsequent frames
-        anim = animation.FuncAnimation(fig, update_quiver, fargs=(Q,),
+        anim = animation.FuncAnimation(fig, update_quiver, fargs=(Q, ),
                                        interval=50, blit=False)
+
+        plt.show()
+
+    def psi_feld_animation(self):
+        self.restart()
+        t, psi, vx, vy = next(self._iterator)
+
+        X = np.arange(0, self.solver.L + self.solver.h, self.solver.h)
+        Y = np.arange(0, self.solver.d + self.solver.h, self.solver.h)
+
+        fig = plt.figure()
+        ax = plt.axes(xlabel='x', ylabel='y')
+
+        levels = MaxNLocator(nbins=50).tick_values(psi.min(), psi.max())
+        cont = plt.contourf(X, Y, psi, levels = levels)
+        cbar = plt.colorbar()
+
+        time_text = ax.text(0.01, 0.01, '', transform=ax.transAxes)
+
+        # animation function
+        def animate(i, cont):
+            t, psi, vx, vy = next(self._iterator)
+            ax.collections = []
+            # levels = MaxNLocator(nbins=50).tick_values(psi.min(), psi.max())
+            # cbar.set_clim(vmin=psi.min(), vmax=psi.max())
+            # cbar.draw_all()
+            cont = plt.contourf(X, Y, psi, levels = levels)
+            time_text.set_text('Zeit = %.1f s' % t)
+            return cont, time_text
+
+        anim = animation.FuncAnimation(fig, animate, fargs=(cont, ), repeat=False)
+        # anim.save('animation.mp4', writer=animation.FFMpegWriter())
 
         plt.show()
 
 
 if __name__ == "__main__":
+    from iter_solver import IterSolver, RukuTimeSolver
 
-    solver = IterSolver(RukuTimeSolver(), ny=21, L=1, d=1)
+    solver = IterSolver(RukuTimeSolver(), ny=21, L=1, d=1, V_in=0)
+    solver.set_omega0_VB()
     evaluator = Evaluator(solver)
     evaluator.v_feld_animation()
+    # evaluator.psi_feld_animation()
