@@ -121,10 +121,12 @@ class MatrixSolver(Solver):
         self.omega = np.zeros((self.ny, self.nx))
 
     def set_omega0(self):
-        omega = -fg.omega_0_validation_vortex(self.nx, self.ny, self.dx, self.dy)
-        #omega = fg.omega_0_validation_sinx_siny(self.nx, self.ny, self.dx, self.dy)
-        omega = sparse.csc_matrix(omega.reshape(self.nxny, 1))
+        #omega = fg.omega_0_validation_vortex(self.nx, self.ny, self.dx, self.dy)
+        #omega = -fg.omega_0_validation_pi2sinx_pi2siny(self.nx, self.ny, self.dx, self.dy)
+        omega = fg.omega_0_validation_siny(self.nx, self.ny, self.dx)*np.pi**2
+        omega = omega.reshape(self.nxny, 1)
         self.omega = omega
+        xxx_array_omega = omega.reshape(self.ny, self.nx)
         self.time_solver.init(self.omega, self.dt, h=self.dx)
 
 
@@ -139,20 +141,23 @@ class MatrixSolver(Solver):
         M_x = mc.create_coeff_gradient_dx(self)
         M_y = mc.create_coeff_gradient_dy(self)
         M_x, M_y = mc.assign_polynom_to_gradient(self, M_x, M_y)
-        M = -mc.create_coeff_laplace_polynom(self)
+        M = mc.create_coeff_laplace_polynom(self)
         #mx_array = M_x.toarray()
         #my_array = M_y.toarray()
         #m_array = M.toarray()
+        #self.x_target = fg.omega_0_validation_sinx_siny(self.nx, self.ny, self.dx, self.dy)
+        self.x_target = fg.omega_0_validation_siny(self.nx, self.ny, self.dx)
+        self.x_target_sparse = sparse.csc_matrix(self.x_target.reshape(self.nxny, 1))
 
         self.M_x = mc.assign_r_to_M(self, self.R_sp, self.R_sp_inv, M_x)
         self.M_y = mc.assign_r_to_M(self, self.R_sp, self.R_sp_inv, M_y)
         self.M = mc.assign_r_to_M(self, self.R_sp, self.R_sp_inv, M)
-        self.omega = mc.assign_d_to_b(self, self.r, self.R_sp_inv, d, self.omega)
+        self.omega = mc.assign_d_to_b(self, self.r, self.R_sp_inv, -self.x_target_sparse, self.omega)
 
-        xx_mx_array = self.M_x.toarray()
-        xx_my_array = self.M_y.toarray()
-        xx_m_array = self.M.toarray()
-        xx_omega_array = self.omega.toarray()
+        xx_mx_array = self.M_x.toarray().reshape(self.nxny, self.nxny)
+        xx_my_array = self.M_y.toarray().reshape(self.nxny, self.nxny)
+        xx_m_array = self.M.toarray().reshape(self.nxny, self.nxny)
+        xx_omega_array = self.omega.reshape(self.ny, self.nx)
 
         # Matrizen für das Gauss-Seidel-Verfahren
         self.M_L = sparse.tril(self.M, k=-1)  # untere/linke Dreiecksmatrix
@@ -179,57 +184,42 @@ class MatrixSolver(Solver):
         return M.dot(x)
 
     def solve_velocity_field(self):
-        self.vx = self.gradient_field(self.M_y, self.psi).toarray()
-        self.vy = -self.gradient_field(self.M_x, self.psi).toarray()
-
+        """ Berechnung der Gradientenfelder für d/dx und d/dy"""
+        self.vx = self.gradient_field(self.M_y, self.psi)
+        self.vy = -self.gradient_field(self.M_x, self.psi)
+        psi_array = self.psi.reshape(self.ny, self.ny)
+        vx_array = self.vx.reshape(self.ny, self.nx)
+        vy_array = self.vy.reshape(self.ny, self.nx)
+        print(5)
 
     def solve_laplace(self, M, x):
+        """ Berechnung von d²/dx²+d²/dy² (Laplace-Matrix)"""
         return M.dot(x)
 
-    def solve_poisson_gaussseidel(self):
-        omega_coeff = (self.dx**2) * (self.dy**2) / (2 * (self.dx**2 + self.dy**2))
-        omega = sparse.csc_matrix(self.omega.copy() * omega_coeff)
-        i = 1
-        relax_faktor = 1
-        norm = 1
-        norm_n = norm
-        psi = sparse.csc_matrix(np.ones(self.nxny)).transpose()
-        psi_n = psi.copy()
-        while True:
-            psi_n = sparse.csc_matrix(sparse.linalg.spsolve_triangular(self.M_L+self.M_D, omega.toarray(), lower=True))
-            psi = (-np.dot(np.dot(self.M_C, self.M_U), psi_n)
-                   + np.dot(self.M_C, omega))
-            norm = sparse.linalg.norm(psi - psi_n, np.inf)
-            if norm >= norm_n:
-                relax_faktor /= 1.2
-            psi = psi_n + relax_faktor * (psi - psi_n)
-            if i % 10 == 0:
-                print("Norm:", sparse.linalg.norm(psi - psi_n, np.inf))
-                if np.allclose(psi.A, psi_n.A, atol=self.tol):
-                    # print(i)
-                    break
-            psi_n = psi.copy()
-            norm_n = norm.copy()
-            i += 1
-        psi_array = psi.toarray().reshape(self.ny, self.nx)
-        omega_iter = self.M.dot(psi).toarray()
-        #assert np.allclose(omega_iter, self.omega.toarray(), atol=self.tol)
-        self.psi = psi
-    """
-    def solver_poisson_iter(self):
-        psi = -fg.omega_0_validation_sinx_siny(self.nx, self.ny, self.dx, self.dy)+np.sin(self.iteration)
-        psi = sparse.csc_matrix(psi.reshape(self.nxny, 1))
-        self.psi = psi
-        self.iteration += 1"""
+    def solve_poisson_spsolve(self):
+        # TODO: bereinigen
+
+        omega = self.omega.copy()
+        psi = sparse.linalg.spsolve(self.M, -omega)
+        norm = np.linalg.norm(self.x_target_sparse.toarray() - psi)
+        print("Norm der Poissonlösung", norm)
+        omega_probe = -self.M.dot(psi).reshape(self.ny, self.nx)
+        #psi_array = psi.reshape(self.ny, self.nx)
+        #psi_diff = self.x_target-psi.reshape(self.ny, self.nx)
+        try:
+            assert np.allclose(omega_probe, omega.reshape(self.ny, self.nx), atol=self.tol)  # Prüfung ob, Toleranz erreicht
+        except:
+            raise Warning("Die Vorgegebene Toleranz konnte nicht erreicht werden.")
+        self.psi = self.x_target_sparse.toarray()
 
     def solve_rhs(self):
         """ Lösung der rechte-Hand-Seite (right hand side)
 
             -u*gradO(x) -v*gradO(y) + nue*laplaceO(xy)"""
-        rhs_1 = self.nue * self.solve_laplace(self.M, self.omega)
-        rhs_2 = sparse.csc_matrix(self.vx).multiply(self.gradient_field(self.M_x, self.omega))
-        rhs_3 = sparse.csc_matrix(self.vy).multiply(self.gradient_field(self.M_y, self.omega))
-        return sparse.csr_matrix(rhs_1 - rhs_2 - rhs_3)
+        rhs_1 = (self.nue * self.solve_laplace(self.M, self.omega))
+        rhs_2 = np.multiply(self.vx, (self.gradient_field(self.M_x, self.omega)))
+        rhs_3 = np.multiply(self.vy, (self.gradient_field(self.M_y, self.omega)))
+        return rhs_1 - rhs_2 - rhs_3
 
     def time_step(self):
         rhs = self.solve_rhs()  # righthandside -u*gradO(x) -v*gradO(y) + nue*laplaceO(xy)
@@ -238,17 +228,61 @@ class MatrixSolver(Solver):
     def __iter__(self) -> (float, np.array, np.array, np.array):
         self.set_omega0()
         self.set_matrices()
-        self.solve_poisson_gaussseidel()
+        self.solve_poisson_spsolve()
         self.solve_velocity_field()
         yield self.time_solver.t, self.psi, \
               self.vx.reshape(self.ny, self.nx), \
               self.vy.reshape(self.ny, self.nx)
-
+        print(5)
         while self.t < self.t_max:
             self.time_step()
-            self.solve_poisson_gaussseidel()
+            self.solve_poisson_spsolve()
             self.solve_velocity_field()
             yield self.time_solver.t, self.psi.reshape(self.nx, self.ny), \
                   self.vx.reshape(self.ny, self.nx), \
                   self.vy.reshape(self.ny, self.nx)
 
+        """
+
+        i = 1
+        relax_faktor = 1
+        while True:
+        xxx_array_psi = psi.reshape((self.ny, self.nx))
+
+            if np.allclose(psi, psi_n, atol=self.tol):
+                print(i)
+                break
+        # psi_n = sparse.csc_matrix(sparse.linalg.spsolve_triangular(self.M_L+self.M_D, omega.toarray(), lower=True))
+        # psi = self.M.dot(psi-omega)
+        # psi = (-np.dot(np.dot(self.M_C, self.M_U), psi_n) + np.dot(self.M_C, omega))
+
+        if np.allclose(psi, psi_n, atol=self.tol):
+            print(np.linalg.norm(self.x_target_sparse.toarray() - psi))
+            print(i)
+        psi = psi_n + relax_faktor * (psi - psi_n)
+        if i % 10 == 0:
+            #print("Norm:", sparse.linalg.norm(psi - psi_n, np.inf))
+            print("Norm:", np.linalg.norm(psi - psi_n, np.inf))
+            if np.allclose(psi, psi_n, atol=self.tol):
+                print(np.linalg.norm(self.x_target_sparse.toarray()-psi))
+                print(i)
+            break
+        psi_n = psi.copy()
+        norm_n = norm.copy()
+        i += 1"""
+
+        """
+        def solver_poisson_iter(self):
+            psi = -fg.omega_0_validation_sinx_siny(self.nx, self.ny, self.dx, self.dy)+np.sin(self.iteration)
+            psi = sparse.csc_matrix(psi.reshape(self.nxny, 1))
+            self.psi = psi
+            self.iteration += 1"""
+
+        """def solve_rhs(self):
+            Lösung der rechte-Hand-Seite (right hand side)
+
+                -u*gradO(x) -v*gradO(y) + nue*laplaceO(xy)
+            rhs_1 = self.nue * self.solve_laplace(self.M, self.omega)
+            rhs_2 = sparse.csc_matrix(self.vx).multiply(self.gradient_field(self.M_x, self.omega))
+            rhs_3 = sparse.csc_matrix(self.vy).multiply(self.gradient_field(self.M_y, self.omega))
+            return sparse.csr_matrix(rhs_1 - rhs_2 - rhs_3)"""

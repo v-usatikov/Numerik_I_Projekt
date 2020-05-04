@@ -30,7 +30,7 @@ def create_coeff_laplace_polynom(self):
     dx_haupt_u[self.nxny - 2 * self.ny:self.nxny - self.ny] = -2
 
     dx_neben_o = np.zeros(self.nxny)  # Nebendiagonale oberhalb der HD
-    dx_neben_o[2 * self.ny:2 * self.ny + (self.ny)] = 1
+    dx_neben_o[2 * self.ny:2 * self.ny + self.ny] = 1
     dx_neben_u = np.zeros(self.nxny)  # Nebendiagonale unterhalb der HD
     dx_neben_u[self.nxny - 3 * self.ny:self.nxny - 2 * self.ny] = 1
 
@@ -91,6 +91,7 @@ def create_coeff_gradient_dx(self):
     data = np.array([diag_haupt, diag_haupt_o, diag_haupt_u])
     diags = np.array([0, self.ny, -self.ny])
     M_x = spdiags(data, diags, self.nxny, self.nxny)
+    # M_x_arra = M_x.toarray().reshape(self.nxny, self.nxny)
     return M_x
 
 
@@ -103,13 +104,14 @@ def create_coeff_gradient_dy(self):
     diag_haupt = np.zeros(self.nxny).ravel()
     o = np.ones(self.nx)
     o[0] = 0
-    diag_haupt_o = np.tile(o, self.ny) * (-1 / (self.dy * 2))
+    diag_haupt_o = np.tile(o, self.ny) * (1 / (self.dy * 2))
     u = np.ones(self.nx)
     u[-1] = 0
-    diag_haupt_u = np.tile(u, self.ny) * (1 / (self.dy * 2))
+    diag_haupt_u = np.tile(u, self.ny) * (-1 / (self.dy * 2))
     data = np.array([diag_haupt, diag_haupt_o, diag_haupt_u])
     diags = np.array([0, 1, -1])
     M_y = spdiags(data, diags, self.nxny, self.nxny)
+    # M_y_arra = M_y.toarray().reshape(self.nxny,self.nxny)
     return M_y
 
 
