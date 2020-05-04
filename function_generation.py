@@ -37,10 +37,19 @@ def omega_0_validation_sinx_siny(nx, ny, dx, dy):
         for j in range(nx):
             x = dx * j
             y = dy * i
-            omega0[i, j] = np.sin(np.pi * x) + np.sin(np.pi * y)
+            omega0[i, j] = (np.sin(np.pi * x) + np.sin(np.pi * y))
     # plot_2dcont(X_mesh, Y_mesh, omega0, "Startverteilung omega")
     return omega0
 
+def omega_0_validation_pi2sinx_pi2siny(nx, ny, dx, dy):
+    omega0 = np.zeros((ny, nx))
+    for i in range(ny):
+        for j in range(nx):
+            x = dx * j
+            y = dy * i
+            omega0[i, j] = (np.sin(np.pi * x) + np.sin(np.pi * y))*np.pi**2
+    # plot_2dcont(X_mesh, Y_mesh, omega0, "Startverteilung omega")
+    return omega0
 
 def omega_0_validation_cosx_cosy(nx, ny, dx, dy):
     omega0 = np.zeros((ny, nx))
