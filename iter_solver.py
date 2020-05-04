@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
 from interfaces import TimeSolver, Solver
+from main_evaluator import Evaluator
 
 
 def omega_null(nx: int, ny: int, h: float) -> np.ndarray:
@@ -56,8 +57,10 @@ class IterSolver(Solver):
                  L: float = 1,
                  dt: float = 0.1,  # Zeitschritt
                  ny: int = 19 + 1,  # Große der Diskretisieren-Gitter für y-Achse
-                 V0: float = 0.1,  # Eingang-Strom-Geschwindigkeit
-                 end_time = 50
+                 st_L: float = 0,
+                 st_d: float = 0,
+                 V_in: float = 0,  # Eingang-Strom-Geschwindigkeit
+                 end_time: float = 50
                  ):
         super().__init__(time_solver)
 
@@ -69,6 +72,14 @@ class IterSolver(Solver):
         self.nx = int(round(L / self.h)) + 1  # Große der Diskretisieren-Gitter für x-Achse
         self.tol = 0.00001
 
+        self.st_L = st_L
+        self.st_d = st_d
+        self.V_in = V_in
+        self.V_out = V_in*(self.d - self.st_d)/self.d
+
+        self._step_bottom_index = int(self.st_d / self.h)
+        self._step_side_index = int(self.st_L / self.h)
+
         self.omega = np.zeros((self.ny, self.nx))
         self.psi = np.zeros((self.ny, self.nx))
         self.vx = np.zeros((self.ny, self.nx))
@@ -77,7 +88,9 @@ class IterSolver(Solver):
         self.t = 0
         self.end_time = end_time
 
-    def set_omega0(self):
+        self.time_solver.init(self.omega, self.dt, self.h)
+
+    def set_omega0_VB(self):
         omega = np.zeros((self.ny, self.nx))
         for i in range(self.nx):
             for j in range(self.ny):
@@ -88,19 +101,35 @@ class IterSolver(Solver):
         self.time_solver.init(self.omega, self.dt, self.h)
 
     def solve_poisson_iter(self):
-        psi = np.ones((self.ny, self.nx))
+        psi = np.zeros((self.ny, self.nx))
         i = 1
         psi_m10 = deepcopy(psi)
+
+        b_i = self._step_bottom_index
+        s_i = self._step_side_index
+
         while True:
-            psi[1:-1, 1:-1] = (((psi[2:, 1:-1] + psi[:-2, 1:-1]) * self.h ** 2 +
-                                (psi[1:-1, 2:] + psi[1:-1, :-2]) * self.h ** 2 +
-                                self.omega[1:-1, 1:-1] * (self.h ** 2 * self.h ** 2))/(2 * (self.h ** 2 + self.h ** 2)))
+            psi[b_i+1:-1, 1:-1] = (((psi[b_i+2:, 1:-1] + psi[b_i:-2, 1:-1]) * self.h ** 2 +
+                                (psi[b_i+1:-1, 2:] + psi[b_i+1:-1, :-2]) * self.h ** 2 +
+                                self.omega[b_i+1:-1, 1:-1] * (self.h ** 2 * self.h ** 2))/(2 * (self.h ** 2 + self.h ** 2)))
+
+
+            if b_i > 2 and s_i > 2:
+                psi[1:b_i+1, s_i+1:-1] = (((psi[2:b_i+1+1, s_i+1:-1] + psi[:b_i+1+1-2, s_i+1:-1]) * self.h ** 2 +
+                                    (psi[1:b_i+1+1-1, s_i+2:] + psi[1:b_i+1+1-1, s_i:-2]) * self.h ** 2 +
+                                    self.omega[1:b_i+1+1-1, s_i+1:-1] * (self.h ** 2 * self.h ** 2)) /
+                                        (2 * (self.h ** 2 + self.h ** 2)))
 
             # Wall boundary conditions, pressure
-            psi[:, 0] = 0  # dp/dy = 0 at y = 2
-            psi[0, :] = 0  # dp/dy = 0 at y = 0
-            psi[-1, :] = 0
-            psi[:, -1] = 0
+            psi_top = self.V_in*(self.d - self.st_d)
+
+            psi[:b_i+1, :s_i+1] = 0
+            psi[0, :] = 0
+            psi[-1, :] = psi_top
+
+            psi[b_i:, 0] = np.linspace(0., psi_top, self.ny - b_i)
+            # psi[:, -1] = psi[:, -2]
+            psi[:, -1] = np.linspace(0., psi_top, self.ny)
 
             if i % 10 == 0:
                 if np.allclose(psi, psi_m10, atol=self.tol):
@@ -151,7 +180,7 @@ class IterSolver(Solver):
         self.omega = self.time_solver.time_step(self.vx, self.vy)
 
     def __iter__(self) -> (float, np.array, np.array, np.array):
-        self.set_omega0()
+        # self.set_omega0()
         self.solve_poisson_iter()
         self.get_speed_feld_from_psi()
         yield self.time_solver.t, self.psi, self.vx, self.vy
@@ -172,23 +201,28 @@ if __name__ == "__main__":
     # solver.plot_speed_feld()
     # solver.plot_psi_feld()
 
-    start = time.time()
-    solver = IterSolver(RukuTimeSolver(), ny=21, L=1, d=1)
-    for t, psi, vx, vy in solver:
+    # start = time.time()
+    # solver = IterSolver(RukuTimeSolver(), ny=21, L=1, d=1)
+    # for t, psi, vx, vy in solver:
+    #
+    #     if np.isclose(t, 1):
+    #         print(time.time() - start)
+    #         solver.plot_speed_feld()
+    #
+    #     if np.isclose(t, 10):
+    #         print(time.time() - start)
+    #         solver.plot_speed_feld()
+    #
+    #     if np.isclose(t, 20):
+    #         print(time.time() - start)
+    #         solver.plot_speed_feld()
+    #
+    #     if np.isclose(t, 30):
+    #         print(time.time() - start)
+    #         solver.plot_speed_feld()
+    #         break
 
-        if np.isclose(t, 1):
-            print(time.time() - start)
-            solver.plot_speed_feld()
-
-        if np.isclose(t, 10):
-            print(time.time() - start)
-            solver.plot_speed_feld()
-
-        if np.isclose(t, 20):
-            print(time.time() - start)
-            solver.plot_speed_feld()
-
-        if np.isclose(t, 30):
-            print(time.time() - start)
-            solver.plot_speed_feld()
-            break
+    solver = IterSolver(RukuTimeSolver(), ny=21, L=2, d=1, V_in=100000000, st_d=0.5, st_L=0.25, dt=0.1)
+    evaluator = Evaluator(solver)
+    # evaluator.v_feld_animation()
+    evaluator.psi_feld_animation()
