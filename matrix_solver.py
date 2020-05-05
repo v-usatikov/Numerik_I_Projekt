@@ -4,6 +4,7 @@ Programm zur numerischen Berechnung von Wirbelströmungen
 Literatur:
 [1] - Michael Knorrenschild, Numerische Mathematik, Carl Hanser Verlag,2010
 """
+import time
 import numpy as np
 import numpy.linalg as lg
 import sympy as sp
@@ -23,16 +24,6 @@ import function_generation as fg  # Import für Funktionen von omega
 import matrix_creation as mc
 import matrix_function as mf
 from interfaces import TimeSolver, Solver
-
-
-def ruku_schritt(t, y, f, h):
-    """RK Schritt"""
-    k1 = f(t, y)
-    k2 = f(t + h / 2, y + h * k1 / 2)
-    k3 = f(t + h / 2, y + h * k2 / 2)
-    k4 = f(t + h, y + h * k3)
-
-    return y + h * (k1 / 6 + k2 / 3 + k3 / 3 + k4 / 6)
 
 
 def lud_decomposition(self, A):
@@ -60,8 +51,18 @@ def analyse_spektralradius(C, A):
     return spektral
 
 
+def ruku_schritt(t, y, f, h):
+    """RK Schritt"""
+    k1 = f(t, y)
+    k2 = f(t + h / 2, y + h * k1 / 2)
+    k3 = f(t + h / 2, y + h * k2 / 2)
+    k4 = f(t + h, y + h * k3)
+
+    return y + h * (k1 / 6 + k2 / 3 + k3 / 3 + k4 / 6)
+
+
 class RukuTimeSolver(TimeSolver):
-    # TODO: Fix und sinnhaftigkeit der aktuellen Implementierung
+    # TODO: Fix und sinnhaftigkeit der aktuellen Implementierung prüfen!
 
     def time_step(self, vx: np.ndarray, vy: np.ndarray, M, M_x, M_y) -> np.ndarray:
         self.M = M
@@ -79,9 +80,9 @@ class RukuTimeSolver(TimeSolver):
     def _f(self, t: float, omega: np.ndarray):
         """ -u * gradO(x) - v * gradO(y) + nue * laplaceO(xy)"""
 
-        rhs_1 = 1 * MatrixSolver.solve_laplace(self.M, omega)
-        rhs_2 = np.multiply(self.vx, (MatrixSolver.gradient_field(self.M_x, omega)))
-        rhs_3 = np.multiply(self.vy, (MatrixSolver.gradient_field(self.M_y, omega)))
+        rhs_1 = 1 * MatrixSolver.solve_laplace(self, self.M, omega)
+        rhs_2 = np.multiply(self.vx, (MatrixSolver.gradient_field(self, self.M_x, omega)))
+        rhs_3 = np.multiply(self.vy, (MatrixSolver.gradient_field(self, self.M_y, omega)))
         f = rhs_1 - rhs_2 - rhs_3
         return f
 
@@ -390,6 +391,7 @@ class MatrixSolver(Solver):
                 Automatische Anpassung sofern möglich und notwendig mit jedem Iterationsschritt.
             """
         # TODO: LU Zerlegung in set_matrices auslagern, da nicht notwendig bei jedem Zeitschritt!
+
         nest = 0  # innere Iterationen (von nested iterations)
         conv_n = 1  # convergenzkriterium
         conv_n1 = 1
@@ -456,7 +458,7 @@ class MatrixSolver(Solver):
 
     def time_step(self):
         rhs = self.solve_rhs()  # righthandside -u*gradO(x) -v*gradO(y) + nue*laplaceO(xy)
-        self.omega = self.time_solver.time_step(self.vx, self.vy, rhs)
+        self.omega = self.time_solver.time_step(self.vx, self.vy, rhs, self.M_x, self.M_y)
 
     def solver_switcher(self, comparison, x_start):
 
@@ -481,21 +483,25 @@ class MatrixSolver(Solver):
         self.set_matrices()
         #self.solve_poisson_jacobi(self.M, self.omega, .1)
         #self.solver_switcher(self.algo)
-        self.solve_poisson_gausseidel(self.M, -self.omega, .00002)
-        #self.solve_poisson_spsolve()
+        #self.solve_poisson_gausseidel(self.M, -self.omega, .00002)
+        self.solve_poisson_spsolve()
         self.solve_velocity_field()
         yield self.time_solver.t, self.psi.reshape(self.nx, self.ny), \
               self.vx.reshape(self.ny, self.nx)[2:, 1:-1], \
               self.vy.reshape(self.ny, self.nx)[1:-1, 2:]
 
         while self.t < self.t_max:
+            start = time.time()
             self.time_step()
             self.omega = mc.assign_d_to_b(self, self.r, self.R_sp_inv, self.D, self.omega)
             #self.solve_poisson_jacobi(self.M, self.omega, .1)
             #self.solver_switcher(self.algo)
-            self.solve_poisson_gausseidel(self.M, -self.omega, .00002)
-            #self.solve_poisson_spsolve()
+            #self.solve_poisson_gausseidel(self.M, -self.omega, .00002)
+            self.solve_poisson_spsolve()
             self.solve_velocity_field()
+            stop = time.time()
+            time_diff = stop-start
+            print("Zeitdifferenz:", time_diff, "real/physisch Zeit:", time_diff/self.dt)
             yield self.time_solver.t, self.psi.reshape(self.nx, self.ny), \
                   self.vx.reshape(self.ny, self.nx)[2:, 1:-1].transpose(), \
                   self.vy.reshape(self.ny, self.nx)[1:-1, 2:].transpose()
