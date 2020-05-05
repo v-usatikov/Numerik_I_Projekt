@@ -83,7 +83,7 @@ class Evaluator:
             return cont, time_text
 
         anim = animation.FuncAnimation(fig, animate, fargs=(cont, ), repeat=False)
-        # anim.save('animation.mp4', writer=animation.FFMpegWriter())
+        anim.save('animation.mp4', writer=animation.FFMpegWriter())
 
         plt.show()
 
@@ -133,6 +133,6 @@ if __name__ == "__main__":
     solver = IterSolver(RukuTimeSolver(), ny=21, L=1, d=1, dt=0.01, V_in=0)
     solver.set_omega0_VB()
     evaluator = Evaluator(solver)
-    evaluator.v_feld_animation()
-    # evaluator.psi_feld_animation()
+    # evaluator.v_feld_animation()
+    evaluator.psi_feld_animation()
     # evaluator.omega_feld_animation()
