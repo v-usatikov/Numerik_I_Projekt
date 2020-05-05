@@ -238,10 +238,17 @@ if __name__ == "__main__":
     #         solver.plot_speed_feld()
     #         break
 
-    solver = IterSolver(RukuTimeSolver(), ny=41, L=2, d=1, V_in=1, st_d=0.5, st_L=0.25, dt=0.01, nue = 0.01)
-    # solver.set_omega0_VB()
-    solver.set_omega0_stoss(0.01)
+    # solver = IterSolver(RukuTimeSolver(), ny=41, L=2, d=1, V_in=1, st_d=0.5, st_L=0.25, dt=0.01, nue = 0.01)
+    # # solver.set_omega0_VB()
+    # solver.set_omega0_stoss(0.01)
+    # evaluator = Evaluator(solver)
+    # # evaluator.v_feld_animation()
+    # # evaluator.psi_feld_animation()
+    # evaluator.omega_feld_animation()
+
+    solver = IterSolver(RukuTimeSolver(), ny=21, L=1, d=1, dt=0.01, nue=0.01)
+    solver.set_omega0_VB()
     evaluator = Evaluator(solver)
-    # evaluator.v_feld_animation()
+    evaluator.v_feld_animation()
     # evaluator.psi_feld_animation()
-    evaluator.omega_feld_animation()
+    # evaluator.omega_feld_animation()
