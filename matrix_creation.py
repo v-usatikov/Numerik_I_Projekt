@@ -285,18 +285,12 @@ def assign_r_to_M(self, R_sp, R_sp_inv, M):
 
 
 def assign_d_to_b(self, r, R_sp_inv, d, b):
-    try:
-        r_d = sparse.csc_matrix(r.multiply(d))
-        b_r_d = r_d + R_sp_inv.dot(b)
-    except:  # sollte nur passieren, wenn alle Elemente von d == 0
-        r_d = sparse.csc_matrix(r.multiply(d))
-        b_r_d = R_sp_inv.dot(b)  # Alternative zu matlab (R==0).*(-b)
-        """
-        a = R_sp_inv.dot(b)  # nach unten verschieben, wenn ok
-        b_r_d = r_d + a"""
-        """
-        a_array = a.toarray()
-        r_d_array = r_d.toarray()
-        brd_array = b_r_d.toarray()
-        """
+
+    r_d = r.multiply(d).toarray().ravel()
+    b_r_d = np.add(r_d, R_sp_inv.dot(b))
+    """
+    a_array = a.toarray()
+    r_d_array = r_d.toarray()
+    brd_array = b_r_d.toarray()"""
+
     return b_r_d

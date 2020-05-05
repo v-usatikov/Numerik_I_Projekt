@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.ticker import MaxNLocator
 
-#from matrix_solver import MatrixSolver, EulerTimeSolver
 
 class Evaluator:
     def __init__(self, solver: Solver):
@@ -53,7 +52,7 @@ class Evaluator:
         # cleared on subsequent frames
         anim = animation.FuncAnimation(fig, update_quiver, fargs=(Q, ),
                                        interval=50, blit=False)
-        anim.save("test.gif", fps=60)
+        #anim.save("test.gif", fps=60)
         plt.show()
 
     def psi_feld_animation(self):
@@ -125,11 +124,12 @@ class Evaluator:
 
 if __name__ == "__main__":
     from iter_solver import IterSolver, RukuTimeSolver
+    from matrix_solver import MatrixSolver, EulerTimeSolver
 
-    solver = MatrixSolver(EulerTimeSolver(), ny=21, x=1, y=1, t_max=100, dt=.1)
+    solver = MatrixSolver(EulerTimeSolver(), ny=21, x=1, y=1, t_max=100, dt=.1, algorithmus="JAC")
     #solver.set_omega0()
     evaluator = Evaluator(solver)
-    evaluator.psi_feld_animation()
+    #evaluator.psi_feld_animation()
     evaluator.v_feld_animation()
 
 
