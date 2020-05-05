@@ -196,21 +196,21 @@ if __name__ == "__main__":
     # evaluator = Evaluator(solver)
     # evaluator.psi_feld_animation()
 
-<<<<<<< HEAD
+
     solver = IterSolver(RukuTimeSolver(), ny=21, L=1, d=1, dt=0.01, V_in=0)
     solver.set_omega0_VB()
-=======
+
     from matrix_solver import MatrixSolver, EulerTimeSolver
     solver = MatrixSolver(EulerTimeSolver(), ny=21, x=1, y=1, t_max=100, dt=.1, algorithmus="JAC")
     #solver.set_omega0()
->>>>>>> 2f5f9439ba6ba1bbc39d3c9b08055b4356ae5624
+
     evaluator = Evaluator(solver)
     #evaluator.psi_feld_animation()
     evaluator.v_feld_animation()
-<<<<<<< HEAD
+
     # evaluator.psi_feld_animation()
     # evaluator.omega_feld_animation()
-=======
+
 
     """
     from iter_solver import IterSolver, RukuTimeSolver
@@ -225,4 +225,3 @@ if __name__ == "__main__":
     evaluator = Evaluator(solver)
     evaluator.psi_feld_animation() 
     """
->>>>>>> 2f5f9439ba6ba1bbc39d3c9b08055b4356ae5624
