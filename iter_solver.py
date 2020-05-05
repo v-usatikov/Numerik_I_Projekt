@@ -106,7 +106,7 @@ class IterSolver(Solver):
             for j in range(self.ny):
                 x = self.h * i
                 y = self.h * j
-                omega[j, i] = 1*sin(pi * x) * sin(pi * y) * 60 * exp(-50 * ((x - 0.30) ** 2 + (y - 0.30) ** 2))
+                omega[j, i] = 1*sin(pi * x) * sin(pi * y) * 6 * exp(-50 * ((x - 0.30) ** 2 + (y - 0.30) ** 2))
         self.omega = omega
         self.time_solver.init(self.omega, self.dt, self.h, self.nue)
 
@@ -246,7 +246,7 @@ if __name__ == "__main__":
     # # evaluator.psi_feld_animation()
     # evaluator.omega_feld_animation()
 
-    solver = IterSolver(RukuTimeSolver(), ny=21, L=1, d=1, dt=0.01, nue=0.01)
+    solver = IterSolver(RukuTimeSolver(), ny=21, L=1, d=1, dt=0.1, nue=0)
     solver.set_omega0_VB()
     evaluator = Evaluator(solver)
     evaluator.v_feld_animation()
