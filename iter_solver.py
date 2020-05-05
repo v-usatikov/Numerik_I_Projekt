@@ -125,16 +125,14 @@ class IterSolver(Solver):
         s_i = self._step_side_index
 
         while True:
-            psi[b_i+1:-1, 1:-1] = (((psi[b_i+2:, 1:-1] + psi[b_i:-2, 1:-1]) * self.h ** 2 +
-                                (psi[b_i+1:-1, 2:] + psi[b_i+1:-1, :-2]) * self.h ** 2 +
-                                self.omega[b_i+1:-1, 1:-1] * (self.h ** 2 * self.h ** 2))/(2 * (self.h ** 2 + self.h ** 2)))
+            psi[b_i+1:-1, 1:-1] = (psi[b_i+2:, 1:-1] + psi[b_i:-2, 1:-1] + psi[b_i+1:-1, 2:] + psi[b_i+1:-1, :-2] +
+                                   self.omega[b_i+1:-1, 1:-1] * self.h ** 2)/4
 
 
             if b_i > 2 and s_i > 2:
-                psi[1:b_i+1, s_i+1:-1] = (((psi[2:b_i+1+1, s_i+1:-1] + psi[:b_i+1+1-2, s_i+1:-1]) * self.h ** 2 +
-                                    (psi[1:b_i+1+1-1, s_i+2:] + psi[1:b_i+1+1-1, s_i:-2]) * self.h ** 2 +
-                                    self.omega[1:b_i+1+1-1, s_i+1:-1] * (self.h ** 2 * self.h ** 2)) /
-                                        (2 * (self.h ** 2 + self.h ** 2)))
+                psi[1:b_i+1, s_i+1:-1] = (psi[2:b_i+1+1, s_i+1:-1] + psi[:b_i+1+1-2, s_i+1:-1] +
+                                          psi[1:b_i+1+1-1, s_i+2:] + psi[1:b_i+1+1-1, s_i:-2] +
+                                          self.omega[1:b_i+1+1-1, s_i+1:-1] * self.h ** 2)/4
 
             # Wall boundary conditions, pressure
             psi_top = self.V_in*(self.d - self.st_d)
