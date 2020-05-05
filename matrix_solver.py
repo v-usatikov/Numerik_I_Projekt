@@ -308,6 +308,9 @@ class MatrixSolver(Solver):
         except:
             raise Warning("Die Vorgegebene Toleranz konnte nicht erreicht werden.")
         # self.psi = self.x_target_sparse.toarray()
+        print("Max. Diff. Probe", np.linalg.norm(omega_probe))  # M.*x_iter = b?
+        print("max. / min. Werte", omega_probe.max(), omega_probe.min())
+        print("---------------------------------------------------------")
         self.psi = psi
 
     def solve_poisson_gausseidel(self, A, b, x_start):
@@ -343,14 +346,14 @@ class MatrixSolver(Solver):
         while conv_n > self.tol:
             nest += 1
             gs1 = -C
-            gs2 = (L+U).dot(x_n) - (omega)
+            gs2 = (U).dot(x_n) - (omega)
             x_n1 = gs1.dot(gs2)
             conv_n1 = np.linalg.norm(x_n1 - x_n)
             if conv_n1 >= conv_n:
                 if conv_high % 10 == 0:
                     if conv_high == 0:
                         w /= conv_n1
-                    else: w /= 2
+                    else: w /= conv_n1
                 w /= conv_n1
                 conv_high += 1
                 if conv_high >= 1000 or w < 1.e-10:
@@ -403,7 +406,7 @@ class MatrixSolver(Solver):
             w_opt = 2 / (1+np.sqrt(1-sp_radius**2))
             w = w_opt
         else:
-            w = .5
+            w = .1
         x_n = np.ones(b.shape[0])*x_start
 
         while conv_n > self.tol:
@@ -476,10 +479,10 @@ class MatrixSolver(Solver):
     def __iter__(self) -> (float, np.array, np.array, np.array):
         self.set_omega0()
         self.set_matrices()
-        #self.solve_poisson_jacobi(self.M, self.omega, 2)
+        #self.solve_poisson_jacobi(self.M, self.omega, .1)
         #self.solver_switcher(self.algo)
-        #self.solve_poisson_gausseidel(self.M, -self.omega, 1)
-        self.solve_poisson_spsolve()
+        self.solve_poisson_gausseidel(self.M, -self.omega, .00002)
+        #self.solve_poisson_spsolve()
         self.solve_velocity_field()
         yield self.time_solver.t, self.psi.reshape(self.nx, self.ny), \
               self.vx.reshape(self.ny, self.nx)[2:, 1:-1], \
@@ -488,10 +491,10 @@ class MatrixSolver(Solver):
         while self.t < self.t_max:
             self.time_step()
             self.omega = mc.assign_d_to_b(self, self.r, self.R_sp_inv, self.D, self.omega)
-            #self.solve_poisson_jacobi(self.M, self.omega, 2)
+            #self.solve_poisson_jacobi(self.M, self.omega, .1)
             #self.solver_switcher(self.algo)
-            #self.solve_poisson_gausseidel(self.M, -self.omega, 1)
-            self.solve_poisson_spsolve()
+            self.solve_poisson_gausseidel(self.M, -self.omega, .00002)
+            #self.solve_poisson_spsolve()
             self.solve_velocity_field()
             yield self.time_solver.t, self.psi.reshape(self.nx, self.ny), \
                   self.vx.reshape(self.ny, self.nx)[2:, 1:-1].transpose(), \
