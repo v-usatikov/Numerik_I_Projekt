@@ -287,6 +287,7 @@ def assign_r_to_M(self, R_sp, R_sp_inv, M):
 def assign_d_to_b(self, r, R_sp_inv, d, b):
 
     r_d = r.multiply(d).toarray().ravel()
+
     b_r_d = np.add(r_d, R_sp_inv.dot(b))
     """
     a_array = a.toarray()

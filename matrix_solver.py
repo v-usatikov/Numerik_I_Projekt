@@ -200,11 +200,10 @@ class MatrixSolver(Solver):
         self.omega = np.zeros((self.ny, self.nx))
 
     def set_omega0(self):
-        # omega = fg.omega_0_validation_vortex(self.nx, self.ny, self.dx, self.dy)
-        omega = fg.omega_0_validation_pi2sinx_pi2siny(self.nx, self.ny, self.dx, self.dy)
+        omega = fg.omega_0_validation_vortex(self.nx, self.ny, self.dx, self.dy)
+        #omega = fg.omega_0_validation_pi2sinx_pi2siny(self.nx, self.ny, self.dx, self.dy)
         # omega = fg.omega_0_validation_siny(self.nx, self.ny, self.dx)*np.pi**2
-        omega = omega.ravel()
-        self.omega = omega
+        self.omega = omega.ravel()
         xxx_array_omega = omega.reshape(self.ny, self.nx)
         self.time_solver.init(self.omega, self.dt, h=self.dx)
 
@@ -212,7 +211,7 @@ class MatrixSolver(Solver):
         """ Initialisierung der notwendigen Matrizen"""
 
         # Randbedingungen
-        self.r, self.R_sp, self.R_sp_inv = mc.create_boundary(self, False)
+        self.r, self.R_sp, self.R_sp_inv = mc.create_boundary(self, False)  # True führt zu singulär Matr.
         self.D = mc.create_dirichlet(self, self.r, 0)
 
         # Verfahrensmatrizen
@@ -224,7 +223,7 @@ class MatrixSolver(Solver):
         # mx_array = M_x.toarray()
         # my_array = M_y.toarray()
         # m_array = M.toarray()
-
+        """
         # ------------------------------------------------------------------------------------#
         # Testfunktionen! Validierungswirbel und SIN Funktionen, siehe function_generation.py
 
@@ -234,7 +233,7 @@ class MatrixSolver(Solver):
         self.D = -self.x_target_sparse
 
         # ------------------------------------------------------------------------------------#
-
+        """
         self.M_x = mc.assign_r_to_M(self, self.R_sp, self.R_sp_inv, M_x)
         self.M_y = mc.assign_r_to_M(self, self.R_sp, self.R_sp_inv, M_y)
         self.M = mc.assign_r_to_M(self, self.R_sp, self.R_sp_inv, M)
@@ -243,21 +242,23 @@ class MatrixSolver(Solver):
         # xx_mx_array = self.M_x.toarray().reshape(self.nxny, self.nxny)
         # xx_my_array = self.M_y.toarray().reshape(self.nxny, self.nxny)
         # xx_m_array = self.M.toarray().reshape(self.nxny, self.nxny)
-        # xx_omega_array = self.omega.reshape(self.ny, self.nx)
+        xx_omega_array = self.omega.reshape(self.ny, self.nx)
 
-        # Matrizen für das Gauss-Seidel-Verfahren
+        # Matrizen für iterative Verfahren
         self.M_L = sparse.tril(self.M, k=-1)  # untere/linke Dreiecksmatrix
         self.M_U = sparse.triu(self.M, k=1)  # obere/rechte Dreiecksmatrix
-        self.M_D = sparse.diags(M.diagonal()).tocsc()
-        # Diagonale Matrix (Werte auf der Hauptdiagonalen)
-        self.M_C = sparse.linalg.inv(self.M_D + self.M_L)
+        self.M_D = sparse.diags(M.diagonal()).tocsc()  # Diagonale Matrix (Werte auf der Hauptdiagonalen)
+
+        self.M_C_GS = sparse.linalg.inv(self.M_D + self.M_L)
+        self.M_C_JAC = sparse.linalg.inv(self.M_D)
+
         # xx_M_L_array = self.M_L.toarray()
         # xx_M_U_array = self.M_U.toarray()
         # xx_M_D_array = self.M_D.toarray()
         # xx_M_C_ega_array = self.M_C.toarray()
 
         mf.try_pos_definite(self.M.toarray())
-        mf.jacobi_definite(self.M_C)
+        mf.jacobi_definite(self.M_C_JAC)
 
 
         # TODO: Testzuweisungen entfernen
@@ -318,6 +319,7 @@ class MatrixSolver(Solver):
                 Relaxationsverfahren mit w (üblicherweise als omega bezeichnet).
                 Automatische Anpassung sofern möglich und notwendig mit jedem Iterationsschritt.
             """
+        # TODO: LU Zerlegung in set_matrices auslagern, da nicht notwendig bei jedem Zeitschritt!
         nest = 0  # innere Iterationen (von nested iterations)
         conv_n = 1  # convergenzkriterium
         conv_n1 = 1
@@ -340,17 +342,18 @@ class MatrixSolver(Solver):
 
         while conv_n > self.tol:
             nest += 1
-            j1 = -C
-            j2 = (L+U).dot(x_n) - (omega)
-            x_n1 = j1.dot(j2)
+            gs1 = -C
+            gs2 = (L+U).dot(x_n) - (omega)
+            x_n1 = gs1.dot(gs2)
             conv_n1 = np.linalg.norm(x_n1 - x_n)
             if conv_n1 >= conv_n:
                 if conv_high % 10 == 0:
                     if conv_high == 0:
                         w /= conv_n1
                     else: w /= 2
+                w /= conv_n1
                 conv_high += 1
-                if conv_high >= 500 or conv_n1 < 10.e-10:
+                if conv_high >= 1000 or w < 1.e-10:
                     print("Keine weitere Anpassung möglich. Differentiation ist divergent!")
                     """
                     probe = A.dot(x_n1) - b
@@ -383,6 +386,7 @@ class MatrixSolver(Solver):
                 Relaxationsverfahren mit w (üblicherweise als omega bezeichnet).
                 Automatische Anpassung sofern möglich und notwendig mit jedem Iterationsschritt.
             """
+        # TODO: LU Zerlegung in set_matrices auslagern, da nicht notwendig bei jedem Zeitschritt!
         nest = 0  # innere Iterationen (von nested iterations)
         conv_n = 1  # convergenzkriterium
         conv_n1 = 1
@@ -399,8 +403,7 @@ class MatrixSolver(Solver):
             w_opt = 2 / (1+np.sqrt(1-sp_radius**2))
             w = w_opt
         else:
-            w = 1
-
+            w = .5
         x_n = np.ones(b.shape[0])*x_start
 
         while conv_n > self.tol:
@@ -413,9 +416,9 @@ class MatrixSolver(Solver):
                 if conv_high % 10 == 0:
                     if conv_high == 0:
                         w /= conv_n1
-                    else: w /= 2
+                    else: w /= conv_n1
                 conv_high += 1
-                if conv_high >= 500 or conv_n1 < 10.e-10:
+                if conv_high >= 1000 or w < 1.e-10:
                     print("Keine weitere Anpassung möglich. Differentiation ist divergent!")
                     """
                     probe = A.dot(x_n1) - b
@@ -475,7 +478,8 @@ class MatrixSolver(Solver):
         self.set_matrices()
         #self.solve_poisson_jacobi(self.M, self.omega, 2)
         #self.solver_switcher(self.algo)
-        self.solve_poisson_gausseidel(self.M, self.omega, 1)
+        #self.solve_poisson_gausseidel(self.M, -self.omega, 1)
+        self.solve_poisson_spsolve()
         self.solve_velocity_field()
         yield self.time_solver.t, self.psi.reshape(self.nx, self.ny), \
               self.vx.reshape(self.ny, self.nx)[2:, 1:-1], \
@@ -486,7 +490,8 @@ class MatrixSolver(Solver):
             self.omega = mc.assign_d_to_b(self, self.r, self.R_sp_inv, self.D, self.omega)
             #self.solve_poisson_jacobi(self.M, self.omega, 2)
             #self.solver_switcher(self.algo)
-            self.solve_poisson_gausseidel(self.M, self.omega, 1)
+            #self.solve_poisson_gausseidel(self.M, -self.omega, 1)
+            self.solve_poisson_spsolve()
             self.solve_velocity_field()
             yield self.time_solver.t, self.psi.reshape(self.nx, self.ny), \
                   self.vx.reshape(self.ny, self.nx)[2:, 1:-1].transpose(), \
