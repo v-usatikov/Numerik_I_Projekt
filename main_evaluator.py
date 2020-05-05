@@ -125,13 +125,14 @@ class Evaluator:
 if __name__ == "__main__":
     from iter_solver import IterSolver, RukuTimeSolver
 
-    solver = IterSolver(RukuTimeSolver(), ny=21, L=1, d=1, V_in=0)
-    solver.set_omega0_VB()
-    evaluator = Evaluator(solver)
-    evaluator.psi_feld_animation()
+    # solver = IterSolver(RukuTimeSolver(), ny=21, L=1, d=1, V_in=0)
+    # solver.set_omega0_VB()
+    # evaluator = Evaluator(solver)
+    # evaluator.psi_feld_animation()
 
-    solver = IterSolver(RukuTimeSolver(), ny=21, L=1, d=1, V_in=0)
+    solver = IterSolver(RukuTimeSolver(), ny=21, L=1, d=1, dt=0.01, V_in=0)
     solver.set_omega0_VB()
     evaluator = Evaluator(solver)
     evaluator.v_feld_animation()
     # evaluator.psi_feld_animation()
+    # evaluator.omega_feld_animation()

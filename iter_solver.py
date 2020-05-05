@@ -106,8 +106,14 @@ class IterSolver(Solver):
             for j in range(self.ny):
                 x = self.h * i
                 y = self.h * j
-                omega[j, i] = 1*sin(pi * x) * sin(pi * y) * 6 * exp(-50 * ((x - 0.30) ** 2 + (y - 0.30) ** 2))
+                omega[j, i] = 1*sin(pi * x) * sin(pi * y) * 60 * exp(-50 * ((x - 0.30) ** 2 + (y - 0.30) ** 2))
         self.omega = omega
+        self.time_solver.init(self.omega, self.dt, self.h, self.nue)
+
+    def set_omega0_stoss(self, wert: float = 1):
+        self.omega = np.zeros((self.ny, self.nx))
+        self.omega[self._step_bottom_index+1:-1, 0:2] = wert
+        # self.omega[1:-1, 1] = wert
         self.time_solver.init(self.omega, self.dt, self.h, self.nue)
 
     def solve_poisson_iter(self):
@@ -140,6 +146,8 @@ class IterSolver(Solver):
             psi[b_i:, 0] = np.linspace(0., psi_top, self.ny - b_i)
             # psi[:, -1] = psi[:, -2]
             psi[:, -1] = np.linspace(0., psi_top, self.ny)
+            # psi[1:-1, -1] = psi[1:-1, -2] + (psi[1:-1, -2]-psi[1:-1, -3])/self.h
+            # print(i)
 
             if i % 10 == 0:
                 if np.allclose(psi, psi_m10, atol=self.tol):
@@ -232,8 +240,10 @@ if __name__ == "__main__":
     #         solver.plot_speed_feld()
     #         break
 
-    solver = IterSolver(RukuTimeSolver(), ny=41, L=2, d=1, V_in=100, st_d=0.5, st_L=0.25, dt=0.01, nue = 0.1)
-    solver.set_omega0_VB()
+    solver = IterSolver(RukuTimeSolver(), ny=41, L=2, d=1, V_in=1, st_d=0.5, st_L=0.25, dt=0.01, nue = 0.01)
+    # solver.set_omega0_VB()
+    solver.set_omega0_stoss(0.01)
     evaluator = Evaluator(solver)
     # evaluator.v_feld_animation()
-    evaluator.psi_feld_animation()
+    # evaluator.psi_feld_animation()
+    evaluator.omega_feld_animation()
